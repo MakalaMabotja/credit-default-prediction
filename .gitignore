@@ -5,6 +5,7 @@ __pycache__/
 
 #Data files
 african-credit-scoring-challenge20241129-14702-1nqro8v
+*.csv
 
 # C extensions
 *.so
