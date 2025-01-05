@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Union, List, Tuple
+from typing import Dict, Optional, Union, List, Tuple, Any
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_object_dtype
@@ -9,9 +9,48 @@ from scipy import stats
 from scipy.stats import zscore
 from IPython.display import display
 
-class CustomDataFrame(pd.DataFrame):
+import matplotlib.pyplot as plt
+import seaborn as sns
+        
 
-    def validate(self, name: str, display_df: Optional[str] = None) -> Dict[str, CustomDataFrame] :
+class CustomDataFrame(pd.DataFrame):
+    """
+    A subclass of pandas.DataFrame with additional functionality for data validation
+    and statistical analysis.
+    """
+    
+    @property
+    def _constructor(self):
+        """
+        Constructor property required for pandas extension classes.
+        Ensures operations return a CustomDataFrame instance.
+        """
+        return CustomDataFrame
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the CustomDataFrame."""
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def read_csv(cls, *args: Any, **kwargs: Any) -> 'CustomDataFrame':
+        """
+        Custom method to read a CSV and return a CustomDataFrame.
+        
+        Parameters
+        ----------
+        *args : Any
+            Positional arguments passed to pd.read_csv
+        **kwargs : Any
+            Keyword arguments passed to pd.read_csv
+            
+        Returns
+        -------
+        CustomDataFrame
+            A new CustomDataFrame instance containing the CSV data
+        """
+        return cls(pd.read_csv(*args, **kwargs))
+
+    def validate(self, name: str = None, display_df: Optional[str] = None) -> Dict[str, 'CustomDataFrame']:
         """
         Validate the dataframe to ensure no null values or duplicates are present.
         The user has the option to view results as a printout or within a ZenML dashboard.
@@ -31,6 +70,8 @@ class CustomDataFrame(pd.DataFrame):
         """
         if not name:
             raise ValueError("A valid name must be provided for the dataset.")
+        elif not isinstance(name, str):
+            raise TypeError("Provide a valid str name for dataset")
 
         validation_results = {
             "Total Rows": len(self),
@@ -77,8 +118,8 @@ class CustomDataFrame(pd.DataFrame):
     def analyze_statistics(self, name : str,
                            target_col : str = 'target',
                            return_df : bool = True,
-                           decimals_places: int = 2                           
-                           ) -> tuple[CustomDataFrame, CustomDataFrame]:
+                           decimal_places: int = 2                           
+                           ) -> Tuple['CustomDataFrame', 'CustomDataFrame']:
         """
         Analyze statistics of numerical and categorical features in the dataset.
 
@@ -176,5 +217,121 @@ class CustomDataFrame(pd.DataFrame):
         return num_stats_df, cat_stats_df
         
     
-    def visualize(self):
-        pass
+    def visualize(self,
+              name: str,
+              target_col: Optional[str] = None,
+              plot_types: Optional[List[str]] = None,
+              max_categories: int = 10,
+              figsize: Tuple[int, int] = (12, 6)) -> None:
+        """
+        Generate comprehensive visualizations for the dataframe's features.
+        
+        Parameters
+        ----------
+        name : str
+            Name of the dataset for plot titles
+        target_col : Optional[str]
+            Target column for relationship analysis plots
+        plot_types : Optional[List[str]]
+            List of plot types to generate. Options: ['distribution', 'correlation', 
+            'categorical', 'boxplot', 'scatter']. If None, generates all plots.
+        max_categories : int
+            Maximum number of categories to show in categorical plots
+        figsize : Tuple[int, int]
+            Base figure size for plots
+            
+        Returns
+        -------
+        None
+            Displays plots using matplotlib/seaborn
+        """
+        if plot_types is None:
+            plot_types = ['distribution', 'correlation', 'categorical', 'boxplot', 'scatter']
+            
+        # Get numeric and categorical columns
+        numeric_cols = self.select_dtypes(include=['number']).columns
+        categorical_cols = self.select_dtypes(include=['object', 'category']).columns
+        
+        # Set the style
+        plt.style.use('seaborn')
+        sns.set_palette("husl")
+        
+        # 1. Distribution Plots for Numerical Features
+        if 'distribution' in plot_types and len(numeric_cols) > 0:
+            n_cols = min(3, len(numeric_cols))
+            n_rows = (len(numeric_cols) - 1) // n_cols + 1
+            
+            fig, axes = plt.subplots(n_rows, n_cols, 
+                                    figsize=(figsize[0], figsize[1] * n_rows))
+            fig.suptitle(f'{name} - Feature Distributions', fontsize=16)
+            
+            for idx, col in enumerate(numeric_cols):
+                if col == target_col:
+                    continue
+                ax = axes[idx // n_cols][idx % n_cols] if n_rows > 1 else axes[idx]
+                sns.histplot(data=self, x=col, kde=True, ax=ax)
+                ax.set_title(f'{col} Distribution')
+            
+            plt.tight_layout()
+            plt.show()
+        
+        # 2. Correlation Heatmap
+        if 'correlation' in plot_types and len(numeric_cols) > 1:
+            plt.figure(figsize=figsize)
+            correlation_matrix = self[numeric_cols].corr()
+            
+            mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
+            sns.heatmap(correlation_matrix, 
+                    mask=mask,
+                    annot=True, 
+                    cmap='coolwarm', 
+                    center=0,
+                    fmt='.2f',
+                    square=True)
+            
+            plt.title(f'{name} - Feature Correlations')
+            plt.tight_layout()
+            plt.show()
+        
+        # 3. Categorical Feature Plots
+        if 'categorical' in plot_types and len(categorical_cols) > 0:
+            for col in categorical_cols:
+                value_counts = self[col].value_counts()
+                if len(value_counts) > max_categories:
+                    value_counts = value_counts[:max_categories]
+                    
+                plt.figure(figsize=figsize)
+                sns.barplot(x=value_counts.index, y=value_counts.values)
+                plt.title(f'{name} - {col} Value Counts')
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                plt.show()
+        
+        # 4. Box Plots for Numerical Features
+        if 'boxplot' in plot_types and len(numeric_cols) > 0:
+            fig, ax = plt.subplots(figsize=figsize)
+            sns.boxplot(data=self[numeric_cols])
+            plt.title(f'{name} - Feature Distributions (Box Plots)')
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.show()
+        
+        # 5. Scatter Plots with Target (if specified)
+        if 'scatter' in plot_types and target_col and target_col in self.columns:
+            n_cols = min(3, len(numeric_cols))
+            n_rows = (len(numeric_cols) - 1) // n_cols + 1
+            
+            fig, axes = plt.subplots(n_rows, n_cols, 
+                                    figsize=(figsize[0], figsize[1] * n_rows))
+            fig.suptitle(f'{name} - Feature Relationships with {target_col}', 
+                        fontsize=16)
+            
+            for idx, col in enumerate(numeric_cols):
+                if col == target_col:
+                    continue
+                ax = axes[idx // n_cols][idx % n_cols] if n_rows > 1 else axes[idx]
+                sns.scatterplot(data=self, x=col, y=target_col, ax=ax)
+                ax.set_title(f'{col} vs {target_col}')
+            
+            plt.tight_layout()
+            plt.show()
