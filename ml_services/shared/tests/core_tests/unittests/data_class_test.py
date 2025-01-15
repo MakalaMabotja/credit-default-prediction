@@ -10,11 +10,13 @@ sys.path.append(os.path.abspath(""))
 
 from shared.core.data_class import CustomDataFrame
 
+TEST_FILE = 'pytest_data.csv'
+
 # Fixture for test data
 @pytest.fixture
 def test_df():
     """Create a test DataFrame fixture."""
-    return CustomDataFrame.read_csv('C:/Python Projects/2-CreditScore Predictions/ml_services/data_processing/tests/pytest_data.csv')
+    return CustomDataFrame.read_csv(TEST_FILE)
 
 # Test class inheritance and type
 def test_inheritance(test_df):
@@ -68,7 +70,7 @@ class TestValidateMethod:
 # Test read_csv method
 def test_read_csv():
     """Test the read_csv class method."""
-    df = CustomDataFrame.read_csv('C:/Python Projects/2-CreditScore Predictions/ml_services/data_processing/tests/pytest_data.csv')
+    df = CustomDataFrame.read_csv(TEST_FILE)
     assert isinstance(df, CustomDataFrame)
     assert len(df) > 0
 
