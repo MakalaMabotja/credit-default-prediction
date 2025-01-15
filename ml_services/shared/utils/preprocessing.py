@@ -1,15 +1,23 @@
 import pandas as pd
 import numpy as np 
 
-def id_transform(df: pd.DataFrame) -> pd.DataFrame:
+import sys
+import os
+
+sys.path.append(os.path.abspath(""))
+# print("Current sys.path:", sys.path)
+
+from shared.core.data_class import CustomDataFrame
+
+def id_transform(df: CustomDataFrame) -> CustomDataFrame:
     """
     Converts all columns containing 'id' in their names to the 'object' dtype.
 
     Parameters:
-    df (pd.DataFrame): Input DataFrame.
+    df (CustomDataFrame): Input DataFrame.
 
     Returns:
-    pd.DataFrame: DataFrame with 'id' columns converted to 'object'.
+    CustomDataFrame: DataFrame with 'id' columns converted to 'object'.
     """
     # Create a dictionary of columns with 'id' and their target dtype
     id_maps = {col: 'object' for col in df.columns if 'id' in col}
@@ -19,7 +27,13 @@ def id_transform(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-def lender_loan_map(df: pd.DataFrame) -> pd.DataFrame:
+def cusomer_map(df: CustomDataFrame) -> CustomDataFrame:
+    # Map customer type
+    customer_map = {value: idx for idx, value in enumerate(df['New_versus_Repeat'].unique())}
+    df['new'] = df['New_versus_Repeat'].map(customer_map)
+            
+
+def lender_loan_map(df: CustomDataFrame) -> CustomDataFrame:
     """
     Maps lender IDs and loan types in the DataFrame to simplified or anonymized representations.
     Parameters:
@@ -34,13 +48,13 @@ def lender_loan_map(df: pd.DataFrame) -> pd.DataFrame:
         and the 'loan_type' column mapped to a single-character representation based on its numeric suffix.
     """
     
-    # Create a mapping for 'lender_id' 
+    #  mapping for 'lender_id' 
     lender_map = {
         name: f'lender_{chr(idx + ord("A"))}'  # chr(idx + ord('A')) converts 0 -> 'A', 1 -> 'B', etc.
         for idx, name in enumerate(df['lender_id'].unique())
     }
 
-    # Create a mapping for 'loan_type' 
+    #  mapping for 'loan_type' 
     loan_map = {
         loan_type: chr(ord('A') + int(loan_type.split('_')[1]))  # Extracts the numeric part and converts it to 'A', 'B', etc.
         for loan_type in df['loan_type'].unique()
@@ -54,7 +68,7 @@ def lender_loan_map(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
-def date_treatment(df: pd.DataFrame) -> pd.DataFrame:
+def date_treatment(df: CustomDataFrame) -> CustomDataFrame:
     """
     Processes the 'disbursement_date' column in the DataFrame to extract various date components
     and create additional features related to the date.
@@ -147,13 +161,13 @@ def analyze_refinancing(df):
 
     return merged_df
 
-def bin_features(df: pd.DataFrame, vectorize_bins: bool = True) -> pd.DataFrame:
+def bin_features(df: CustomDataFrame, vectorize_bins: bool = True) -> CustomDataFrame:
     """
     Bin numerical features into categorical ranges and optionally vectorize bins based on target variable statistics.
 
     Parameters
     ----------
-    df : pd.DataFrame
+    df : CustomDataFrame
         The input DataFrame containing the following required columns:
         - 'lender_portion': Numerical column to be binned based on `portion_bins`.
         - 'duration': Numerical column to be binned based on `duration_bins`.
@@ -165,7 +179,7 @@ def bin_features(df: pd.DataFrame, vectorize_bins: bool = True) -> pd.DataFrame:
 
     Returns
     -------
-    pd.DataFrame
+    CustomDataFrame
         The input DataFrame is return is 
     Notes
     -----
