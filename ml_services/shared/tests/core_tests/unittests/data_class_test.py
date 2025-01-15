@@ -5,8 +5,10 @@ import pandas as pd
 import numpy as np
 from typing import Dict
 
-sys.path.append(os.path.abspath("../.."))
-from core import CustomDataFrame
+sys.path.append(os.path.abspath(""))
+print("Current sys.path:", sys.path)
+
+from shared.core.data_class import CustomDataFrame
 
 # Fixture for test data
 @pytest.fixture
