@@ -166,7 +166,7 @@ def bin_features(df: pd.DataFrame, vectorize_bins: bool = True) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-
+        The input DataFrame is return is 
     Notes
     -----
     - The feature bins are predefined ranges used to discretize the numerical features.
