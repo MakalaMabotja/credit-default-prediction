@@ -30,7 +30,8 @@ def id_transform(df: CustomDataFrame) -> CustomDataFrame:
 def cusomer_map(df: CustomDataFrame) -> CustomDataFrame:
     # Map customer type
     customer_map = {value: idx for idx, value in enumerate(df['New_versus_Repeat'].unique())}
-    df['new'] = df['New_versus_Repeat'].map(customer_map)
+    df['new'] = df['New_versus_Repeat'].map(customer_map).astype(int)
+    return df
             
 
 def lender_loan_map(df: CustomDataFrame) -> CustomDataFrame:
@@ -56,7 +57,7 @@ def lender_loan_map(df: CustomDataFrame) -> CustomDataFrame:
 
     #  mapping for 'loan_type' 
     loan_map = {
-        loan_type: chr(ord('A') + int(loan_type.split('_')[1]))  # Extracts the numeric part and converts it to 'A', 'B', etc.
+        loan_type: chr(ord('A') + int(loan_type.split('_')[1]) - 1)  # Extracts the numeric part and converts it to 'A', 'B', etc.
         for loan_type in df['loan_type'].unique()
     }
 
@@ -104,7 +105,7 @@ def date_treatment(df: CustomDataFrame) -> CustomDataFrame:
     
     return df.sort_index()
 
-def analyze_refinancing(df):
+def analyze_refinancing(df: CustomDataFrame) -> CustomDataFrame:
     """
     Analyzes loan refinancing patterns by identifying duplicate loan IDs and calculating
     refinancing metrics when the lender changes.
@@ -141,17 +142,17 @@ def analyze_refinancing(df):
 
     # Calculate refinancing metrics
     filtered_df.loc[refinance_mask, 'refinanced'] = 1
-    filtered_df.loc[refinance_mask.index, 'refinance_amount'] = (
-        shifted_df.loc[refinance_mask.index,'Amount_Funded_By_Lender'] - 
-        filtered_df.loc[refinance_mask.index,'Amount_Funded_By_Lender']
+    filtered_df.loc[refinance_mask, 'refinance_amount'] = (
+        shifted_df.loc[refinance_mask,'Amount_Funded_By_Lender'] - 
+        filtered_df.loc[refinance_mask,'Amount_Funded_By_Lender']
     )
-    filtered_df.loc[refinance_mask.index, 'increased_risk'] = (
-        shifted_df.loc[refinance_mask.index,'Lender_portion_Funded'] - 
-        filtered_df.loc[refinance_mask.index,'Lender_portion_Funded']
+    filtered_df.loc[refinance_mask, 'increased_risk'] = (
+        shifted_df.loc[refinance_mask,'Lender_portion_Funded'] - 
+        filtered_df.loc[refinance_mask,'Lender_portion_Funded']
     )
-    filtered_df['refinanced'].ffill(inplace=True, axis=0)
-    filtered_df['refinance_amount'].ffill(inplace=True, axis=0)
-    filtered_df['increased_risk'].ffill(inplace=True, axis=0)
+    filtered_df['refinanced'] = filtered_df['refinanced'].ffill( axis=0)
+    filtered_df['refinance_amount'] = filtered_df['refinance_amount'].ffill( axis=0)
+    filtered_df['increased_risk'] = filtered_df['increased_risk'].ffill( axis=0)
 
     merged_df = pd.concat([df_copy, filtered_df[refinance_col]], axis=1)
 
