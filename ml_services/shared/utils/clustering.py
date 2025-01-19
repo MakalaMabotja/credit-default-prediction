@@ -9,14 +9,8 @@ from dataclasses import dataclass
 import logging
 import pickle
 
-@dataclass
-class ClusterConfig:
-    """Configuration for clustering parameters"""
-    min_clusters: int = 2
-    max_clusters: int = 10
-    random_state: int = 42
-    best_clusters: int = 6
-    cols_to_transform: List[str] = None
+from .cluster_config import DiagnosticConfig, ClusteringConfig, cluster_rfm_plot
+
 
 class CustomerClusters:
     """
@@ -31,13 +25,14 @@ class CustomerClusters:
     def __init__(
         self, 
         df: pd.DataFrame, 
-        col_map: Dict[str, str],
-        config: Optional[ClusterConfig] = None
+        col_map: Optional[Dict[str, str]], 
+        col_to_transform: Optional[List[str]],  
+        diagnostic_params: DiagnosticConfig
     ):
-        self._validate_inputs(df, col_map)
+        self._validate_inputs(df, col_map, col_to_transform)
         self.data = df.copy()
-        self.col_map = col_map
-        self.config = config or ClusterConfig()
+        self.col_map = ClusteringConfig.col_map or col_map
+        col_to_transform = ClusteringConfig.cols_to_transform or col_to_transform
         self.rfm = None
         self.k_clusters = None
         self.X = None
@@ -47,7 +42,7 @@ class CustomerClusters:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-    def _validate_inputs(self, df: pd.DataFrame, col_map: Dict[str, str]) -> None:
+    def _validate_inputs(self, df: pd.DataFrame, col_map: Dict[str, str], col_to_transform) -> None:
         """Validate input data and column mapping"""
         if df.empty:
             raise ValueError("Input DataFrame cannot be empty")
@@ -162,7 +157,7 @@ class CustomerClusters:
         if self.X is None:
             raise ValueError("Must run rfm_clusters() before diagnostics")
             
-        if diagnostics is None:
+        if diagnostics is None or diagnostics == ['all']:
             diagnostics = ['silhouette', 'elbow']
 
         if 'silhouette' in diagnostics:

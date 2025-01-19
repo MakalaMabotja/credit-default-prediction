@@ -198,7 +198,7 @@ def bin_features(df: CustomDataFrame, vectorize_bins: bool = True) -> CustomData
     
     if vectorize_bins:
         # Calculate mean target for each combination
-        bin_summary = df.groupby(['binned_lender_portion', 'binned_duration', 'binned_amounts'])['target'].mean()
+        bin_summary = df.groupby(['binned_lender_portion', 'binned_duration', 'binned_amounts'], observed=False)['target'].mean()
         
         # Create a mapping dictionary from bin combinations to their mean target
         bin_mapping = bin_summary.to_dict()
