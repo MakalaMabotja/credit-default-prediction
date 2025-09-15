@@ -1,6 +1,8 @@
+from unittest.mock import patch
 import pytest
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import os
 from shared.utils import DiagnosticConfig, ClusteringConfig, cluster_rfm_plot
@@ -112,12 +114,13 @@ class TestClusterRFMPlot:
     def test_plot_without_save(self, sample_data):
         """Test plotting without saving"""
         # Should not raise any exceptions
-        cluster_rfm_plot(
-            sample_data,
-            rfm_col='recency',
-            show_plot=False,
-            save_plot=False
-        )
+        with patch("matplotlib.pyplot.show")
+            cluster_rfm_plot(
+                sample_data,
+                rfm_col='recency',
+                show_plot=False,
+                save_plot=False
+            )
     
     @pytest.mark.parametrize("rfm_col", ['recency', 'frequency', 'monetary'])
     def test_all_rfm_columns(self, sample_data, rfm_col):

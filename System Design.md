@@ -1,7 +1,5 @@
 ## **Project Architecture Overview**
 
-You'll break the system down into five key microservices:
-
 1. **Data Ingestion and Processing Service**
 2. **Data Analysis and Statistical Testing Service**
 3. **Model Training, Cross-Validation, and Logging Service**
@@ -173,5 +171,3 @@ Each microservice will run independently, communicate via APIs, and use Azure se
 3. **Security**: Secure APIs with Azure API Management and use Azure Key Vault for secrets management.
 4. **CI/CD**: Implement continuous integration and deployment pipelines with Azure DevOps.
 5. **Data Governance**: Ensure compliance with data protection regulations (e.g., GDPR, POPIA).
-
-This design ensures a robust, scalable, and maintainable end-to-end data science project, leveraging microservices and Azure cloud services effectively.

@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-from shared.utils import CustomerClusters
+from shared.utils import CustomerClusters, DiagnosticConfig, ClusteringConfig
 from shared.core import CustomDataFrame
 
 # Replace with your test file
@@ -53,7 +53,7 @@ def test_customercluster_initialization(test_df, column_mapping):
     clusters = CustomerClusters(test_df, column_mapping)
     assert clusters.data is not None
     assert clusters.col_map == column_mapping
-    assert isinstance(clusters.config, ClusterConfig)
+    assert isinstance(clusters.diagnostic_params, ClusteringConfig)
 
 def test_validation_empty_dataframe(column_mapping):
     """Test initialization with empty DataFrame"""
@@ -154,7 +154,7 @@ def test_save_model_without_training(test_df, column_mapping, tmp_path):
 
 def test_custom_config(test_df, column_mapping):
     """Test initialization with custom configuration"""
-    custom_config = ClusterConfig(
+    custom_config = DiagnosticConfig(
         min_clusters=3,
         max_clusters=8,
         random_state=123,
