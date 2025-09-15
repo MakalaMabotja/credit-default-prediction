@@ -179,10 +179,9 @@ def test_refinance_values(finance_df):
     assert customer_2.loc[0 ,'refinanced'] == 1
     assert customer_2.loc[0, 'refinance_amount'] == -50
     assert all(np.isclose(customer_2['increased_risk'], 0.05))
-
-
+    
 @pytest.fixture
-def sample_df():
+def bin_df():
     """Fixture to provide a sample DataFrame for testing."""
     return CustomDataFrame({
         'lender_portion': [0.1, 0.25, 0.6, 1.5, np.nan],
@@ -191,9 +190,9 @@ def sample_df():
         'target': [1, 0, 1, 1, 0],
     })
 
-def test_basic_binning(sample_df):
+def test_basic_binning(bin_df):
     """Test basic binning functionality."""
-    result_df = bin_features(sample_df, vectorize_bins=False)
+    result_df = bin_features(bin_df, vectorize_bins=False)
     
     # Check new binned columns exist
     expected_columns = ['binned_lender_portion', 'binned_duration', 'binned_amounts']
@@ -202,33 +201,33 @@ def test_basic_binning(sample_df):
     
     # Validate binned column types
     for col in expected_columns:
-        assert pd.api.types.is_categorical_dtype(result_df[col]), f"{col} is not of categorical dtype."
+        assert isinstance(result_df[col].dtype, pd.CategoricalDtype), f"{col} is not of categorical dtype."
 
-def test_vectorization_enabled(sample_df):
+def test_vectorization_enabled(bin_df):
     """Test vectorization functionality with bin_score."""
-    result_df = bin_features(sample_df, vectorize_bins=True)
+    result_df = bin_features(bin_df, vectorize_bins=True)
     
     # Check bin_score column exists
     assert 'bin_score' in result_df.columns, "bin_score column is missing when vectorization is enabled."
     
     # Validate bin_score values are computed correctly
-    bin_score_mapping = result_df.groupby(['binned_lender_portion', 'binned_duration', 'binned_amounts'])['target'].mean().to_dict()
+    bin_score_mapping = result_df.groupby(['binned_lender_portion', 'binned_duration', 'binned_amounts'], observed=False)['target'].mean().to_dict()
     for _, row in result_df.iterrows():
         if not pd.isnull(row['binned_lender_portion']) and not pd.isnull(row['binned_duration']) and not pd.isnull(row['binned_amounts']):
             bin_combination = (row['binned_lender_portion'], row['binned_duration'], row['binned_amounts'])
             assert row['bin_score'] == pytest.approx(bin_score_mapping[bin_combination]), \
                 f"bin_score for {bin_combination} is incorrect."
 
-def test_vectorization_disabled(sample_df):
+def test_vectorization_disabled(bin_df):
     """Test disabling vectorization."""
-    result_df = bin_features(sample_df, vectorize_bins=False)
+    result_df = bin_features(bin_df, vectorize_bins=False)
     
     # Ensure bin_score column does not exist
     assert 'bin_score' not in result_df.columns, "bin_score column should not exist when vectorization is disabled."
-
-def test_missing_values(sample_df):
+    
+def test_missing_values(bin_df):
     """Test behavior with NaN values."""
-    result_df = bin_features(sample_df, vectorize_bins=True)
+    result_df = bin_features(bin_df, vectorize_bins=True)
     
     # Check that NaN values in original columns do not break binning
     assert result_df['binned_lender_portion'].isnull().sum() == 1, "NaN handling for binned_lender_portion is incorrect."
@@ -259,6 +258,3 @@ def test_extreme_values():
     assert result_df['binned_duration'].isnull().sum() == 1, "Extreme duration values not handled correctly."
     assert result_df['binned_amounts'].isnull().sum() == 1, "Extreme Total_Amount_to_Repay values not handled correctly."
 
-
-if __name__ == '__main__':
-    pytest.main([__file__])

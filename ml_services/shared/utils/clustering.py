@@ -9,35 +9,36 @@ from dataclasses import dataclass
 import logging
 import pickle
 
-@dataclass
-class ClusterConfig:
-    """Configuration for clustering parameters"""
-    min_clusters: int = 2
-    max_clusters: int = 10
-    random_state: int = 42
-    best_clusters: int = 6
-    cols_to_transform: List[str] = None
+from .cluster_config import DiagnosticConfig, ClusteringConfig, cluster_rfm_plot
+
 
 class CustomerClusters:
     """
     Customer segmentation using RFM analysis and K-means clustering.
     
     Parameters:
-        df (pd.DataFrame): Input dataframe with customer transaction data
-        col_map (Dict[str, str]): Mapping of column aggregations for RFM calculation
-        config (ClusterConfig): Configuration parameters
+        df (pd.DataFrame): Input dataframe with customer transaction data.
+        col_map (Optional[Dict[str, str]]): Mapping of column aggregations for RFM calculation.
+        col_to_transform (Optional[List[str]]): Columns to be transformed during preprocessing.
+        diagnostic_params (Optional[DiagnosticConfig]): Diagnostic configuration parameters.
     """
-    
+
     def __init__(
         self, 
         df: pd.DataFrame, 
-        col_map: Dict[str, str],
-        config: Optional[ClusterConfig] = None
+        col_map: Optional[Dict[str, str]] = None, 
+        col_to_transform: Optional[List[str]] = None,  
+        diagnostic_params: Optional[DiagnosticConfig] = None
     ):
-        self._validate_inputs(df, col_map)
+        # Validate inputs first
+        self._validate_inputs(df, col_map, col_to_transform, diagnostic_params)
+
+        # Assign attributes only after validation
         self.data = df.copy()
-        self.col_map = col_map
-        self.config = config or ClusterConfig()
+        self.col_map = col_map or ClusteringConfig().col_map
+        self.col_to_transform = col_to_transform or ClusteringConfig().cols_to_transform
+        self.diagnostic_params = diagnostic_params or DiagnosticConfig()
+
         self.rfm = None
         self.k_clusters = None
         self.X = None
@@ -47,16 +48,47 @@ class CustomerClusters:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-    def _validate_inputs(self, df: pd.DataFrame, col_map: Dict[str, str]) -> None:
-        """Validate input data and column mapping"""
+    def _validate_inputs(
+        self, 
+        df: pd.DataFrame, 
+        col_map: Optional[Dict[str, str]], 
+        col_to_transform: Optional[List[str]], 
+        diagnostic_params: Optional[DiagnosticConfig]
+    ) -> None:
+        """Validate input data and configurations."""
         if df.empty:
-            raise ValueError("Input DataFrame cannot be empty")
+            raise ValueError("Input DataFrame cannot be empty.")
         
-        required_cols = {'customer_id', 'disbursement_date', 'New_versus_Repeat', 
-                        'Total_Amount', 'ID', 'Lender_portion_Funded'}
+        required_cols = {
+            'customer_id', 'disbursement_date', 'New_versus_Repeat', 
+            'Total_Amount', 'ID', 'Lender_portion_Funded'
+        }
         missing_cols = required_cols - set(df.columns)
         if missing_cols:
             raise ValueError(f"Missing required columns: {missing_cols}")
+        
+        if col_map:
+            for col in col_map.keys():
+                if col == 'monetary' :
+                    if 'Total_Amount' not in df.columns:
+                        raise ValueError(f"Monetary Value column not in DataFrame provided")
+                    
+                if col not in df.columns:
+                    raise ValueError(f"Column '{col}' from col_map not found in DataFrame columns.")
+        
+        if col_to_transform:
+            for col in col_to_transform:
+                if col not in df.columns:
+                    raise ValueError(f"Column '{col}' from col_to_transform not found in DataFrame columns.")
+        
+        if diagnostic_params:
+            if diagnostic_params.diagnosis_method:
+                invalid_methods = [
+                    method for method in diagnostic_params.diagnosis_method 
+                    if method not in {"silhouette", "elbow"}
+                ]
+                if invalid_methods:
+                    raise ValueError(f"Invalid diagnostic methods: {invalid_methods}")
 
     def customer_rfm(self) -> pd.DataFrame:
         """
@@ -162,7 +194,7 @@ class CustomerClusters:
         if self.X is None:
             raise ValueError("Must run rfm_clusters() before diagnostics")
             
-        if diagnostics is None:
+        if diagnostics is None or diagnostics == ['all']:
             diagnostics = ['silhouette', 'elbow']
 
         if 'silhouette' in diagnostics:
